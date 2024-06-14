@@ -8369,9 +8369,11 @@ class Executor {
             const resultMap = {};
             for (const key in this.library.expressions) {
                 const expr = this.library.expressions[key];
+                console.log('\n expr: ', JSON.stringify(expr));
                 if (expr.context === 'Patient') {
                     resultMap[key] = await expr.execute(patient_ctx);
                 }
+                console.log('\n resultMap:', JSON.stringify(resultMap));
             }
             r.recordPatientResults(patient_ctx, resultMap);
             currentPatient = await patientSource.nextPatient();
