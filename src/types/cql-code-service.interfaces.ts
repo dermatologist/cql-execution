@@ -30,3 +30,12 @@ export interface TerminologyProvider {
   findValueSetsByOid: (oid: string) => ValueSet[] | Promise<ValueSet[]>;
   findValueSet: (oid: string, version?: string) => ValueSet | Promise<ValueSet> | null;
 }
+
+/*
+  * Structure of a service that can check an assertion using the LLM
+*/
+export interface LlmService {
+  checkAssertion: (expression: string, context: string) => Promise<boolean>;
+  checkMention: (expression: string, context: string) => Promise<boolean>;
+  checkNegation: (expression: string, context: string) => Promise<boolean>;
+}

@@ -8331,6 +8331,10 @@ class Executor {
         this.messageListener = ml;
         return this;
     }
+    camelCaseToWords(s) {
+        const result = s.replace(/([A-Z])/g, ' $1');
+        return result.charAt(0).toUpperCase() + result.slice(1);
+    }
     async exec_expression(expression, patientSource, executionDateTime) {
         const r = new results_1.Results();
         const expr = this.library.expressions[expression];
@@ -8372,6 +8376,25 @@ class Executor {
                 if (expr.context === 'Patient') {
                     resultMap[key] = await expr.execute(patient_ctx);
                 }
+                //! START: Process with LLM if DocumentReference
+                try {
+                    const name = expr.name;
+                    // const context = expr.context;
+                    const context = JSON.stringify(await currentPatient.findRecords("Condition"));
+                    const source = expr.expression.arg.sources[0].expression.datatype;
+                    if (source.includes('DocumentReference')) {
+                        console.log("\n Is there evidence that patient " + this.camelCaseToWords(name) + " based on the context below?");
+                        console.log("\nContext: ", context);
+                        let result = true;
+                        resultMap[key] = result;
+                    }
+                    // console.log("\n ", name, " ", context, " ", source)
+                    // console.log('\n expr: ', JSON.stringify(expr));
+                }
+                catch (e) {
+                }
+                console.log('\n resultMap:', JSON.stringify(resultMap));
+                //! END: Process with LLM if DocumentReference
             }
             r.recordPatientResults(patient_ctx, resultMap);
             currentPatient = await patientSource.nextPatient();
