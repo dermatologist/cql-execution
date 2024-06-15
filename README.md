@@ -8,6 +8,9 @@ JSON ELM.
 
 For more information, see the [CQL Execution Framework Overview](OVERVIEW.md).
 
+## This fork has an experimental feature to support LLM based assertion checking on DocumentReference.
+* WIP
+
 # Data Model and Terminology Service Implementations
 
 This library (`cql-execution`) focuses on supporting CQL's logical constructs; it does not provide
