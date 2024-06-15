@@ -3,14 +3,15 @@ import { Results } from './results';
 import { UnfilteredContext, PatientContext } from './context';
 import { DateTime } from '../datatypes/datetime';
 import { Parameter } from '../types/runtime.types';
-import { DataProvider, TerminologyProvider } from '../types';
+import { DataProvider, LlmService, TerminologyProvider } from '../types';
 
 export class Executor {
   constructor(
     public library: any,
     public codeService?: TerminologyProvider,
     public parameters?: Parameter,
-    public messageListener: MessageListener = new NullMessageListener()
+    public messageListener: MessageListener = new NullMessageListener(),
+    public llmService?: LlmService
   ) {}
 
   withLibrary(lib: any) {
@@ -31,11 +32,6 @@ export class Executor {
   withMessageListener(ml: MessageListener) {
     this.messageListener = ml;
     return this;
-  }
-
-  camelCaseToWords(s: string) {
-    const result = s.replace(/([A-Z])/g, ' $1');
-    return result.charAt(0).toUpperCase() + result.slice(1);
   }
 
   async exec_expression(expression: any, patientSource: DataProvider, executionDateTime: DateTime) {
@@ -104,22 +100,202 @@ export class Executor {
           resultMap[key] = await expr.execute(patient_ctx);
         }
         //! START: Process with LLM if DocumentReference
+        /*
+          * expr
+          {
+            "name": "HasRecentVisualFootExam",
+            "context": "Patient",
+            "expression": {
+              "arg": {
+                "sources": [
+                  {
+                    "alias": "P",
+                    "expression": {
+                      "datatype": "{http://hl7.org/fhir}DocumentReference",
+                      "templateId": "http://hl7.org/fhir/StructureDefinition/DocumentReference",
+                      "codeProperty": "code",
+                      "codes": {
+                        "source": {
+                          "name": "Diabetic foot examination (regime/therapy)"
+                        },
+                        "path": "codes"
+                      }
+                    }
+                  }
+                ],
+                "aliases": [
+                  "P"
+                ],
+                "letClauses": [],
+                "relationship": [],
+                "where": {
+                  "args": [
+                    {
+                      "args": [
+                        {
+                          "source": {
+                            "scope": "P",
+                            "path": "status"
+                          },
+                          "path": "value"
+                        },
+                        {
+                          "valueType": "{urn:hl7-org:elm-types:r1}String",
+                          "value": "completed"
+                        }
+                      ]
+                    },
+                    {
+                      "args": [
+                        {
+                          "args": [
+                            {
+                              "source": {
+                                "arg": {
+                                  "scope": "P",
+                                  "path": "performed"
+                                },
+                                "asTypeSpecifier": {
+                                  "name": "{http://hl7.org/fhir}dateTime",
+                                  "type": "NamedTypeSpecifier"
+                                },
+                                "strict": false
+                              },
+                              "path": "value"
+                            },
+                            {
+                              "lowClosed": true,
+                              "highClosed": true,
+                              "low": {
+                                "args": [
+                                  {},
+                                  {
+                                    "value": 1,
+                                    "unit": "year"
+                                  }
+                                ]
+                              },
+                              "high": {
+                                "args": [
+                                  {},
+                                  {
+                                    "value": 1,
+                                    "unit": "year"
+                                  }
+                                ]
+                              }
+                            }
+                          ]
+                        },
+                        {
+                          "arg": {
+                            "arg": {}
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                },
+                "returnClause": null,
+                "aggregateClause": null,
+                "sortClause": null
+              }
+            }
+          }
+
+          * context
+          [
+            {
+              "clinicalStatus": {
+                "coding": [
+                  {
+                    "system": {
+                      "value": "http://terminology.hl7.org/CodeSystem/condition-clinical"
+                    },
+                    "code": {
+                      "value": "active"
+                    },
+                    "display": {
+                      "value": "Active"
+                    }
+                  }
+                ]
+              },
+              "verificationStatus": {
+                "coding": [
+                  {
+                    "system": {
+                      "value": "http://terminology.hl7.org/CodeSystem/condition-ver-status"
+                    },
+                    "code": {
+                      "value": "confirmed"
+                    },
+                    "display": {
+                      "value": "Confirmed"
+                    }
+                  }
+                ]
+              },
+              "code": {
+                "coding": [
+                  {
+                    "system": {
+                      "value": "http://snomed.info/sct"
+                    },
+                    "code": {
+                      "value": "44054006"
+                    },
+                    "display": {
+                      "value": "Diabetes mellitus type 2 (disorder)"
+                    }
+                  }
+                ]
+              },
+              "subject": {
+                "reference": {
+                  "value": "Patient/Recent_Foot_Exam"
+                }
+              },
+              "onset": {
+                "value": "2015-01-30"
+              },
+              "id": {
+                "value": "2-1"
+              }
+            }
+          ]
+    */
         try{
-          const name = expr.name;
-          // const context = expr.context;
-          const context = JSON.stringify(await currentPatient.findRecords("Condition"));
+          const expression = JSON.stringify(expr);
+          const context = JSON.stringify(await currentPatient.findRecords("DocumentReference"));
           const source = expr.expression.arg.sources[0].expression.datatype;
           if (source.includes('DocumentReference')) {
-            console.log("\n Is there evidence that patient " + this.camelCaseToWords(name) + " based on the context below?")
-            console.log("\nContext: ", context);
-            let result = true;
-            resultMap[key] = result;
+            if (this.llmService) {
+              const result = await this.llmService.checkAssertion(expression, context);
+              resultMap[key] = result;
+            }
           }
-          // console.log("\n ", name, " ", context, " ", source)
-          // console.log('\n expr: ', JSON.stringify(expr));
         } catch (e) {
         }
-        console.log('\n resultMap:', JSON.stringify(resultMap));
+        /*
+        {
+          "Patient": {
+            "gender": {
+              "value": "female"
+            },
+            "birthDate": {
+              "value": "1979-01-30"
+            },
+            "id": {
+              "value": "Recent_Foot_Exam"
+            }
+          },
+          "InDemographic": true,
+          "HasDiabetes": false,
+          "MeetsInclusionCriteria": false,
+          "HasRecentVisualFootExam": true
+        }
+        */
         //! END: Process with LLM if DocumentReference
       }
       r.recordPatientResults(patient_ctx, resultMap);
