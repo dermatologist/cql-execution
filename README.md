@@ -8,8 +8,26 @@ JSON ELM.
 
 For more information, see the [CQL Execution Framework Overview](OVERVIEW.md).
 
-## This fork has an experimental feature to support LLM based assertion checking on DocumentReference.
-* WIP
+## This fork has an experimental feature to support LLM-based assertion checking on DocumentReference.
+* [executor.ts](src/runtime/executor.ts)
+```
+const executor = new cql.Executor(libService, llmService: LlmService);
+```
+
+* [interface](src/types/cql-code-service.interfaces.ts)
+
+```
+/*
+  * Structure of a service that can check an assertion using the LLM
+*/
+export interface LlmService {
+  checkAssertion: (expression: string, context: string) => Promise<boolean>;
+  checkMention: (expression: string, context: string) => Promise<boolean>;
+  checkNegation: (expression: string, context: string) => Promise<boolean>;
+}
+```
+
+* Check back for the implementation of the LLM processor and CQL usage examples. [WIP](https://github.com/dermatologist/cql-express-r4)
 
 # Data Model and Terminology Service Implementations
 
