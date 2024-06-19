@@ -28,6 +28,7 @@ export interface LlmService {
 ```
 
 * Check back for the implementation of the LLM processor and CQL usage examples. [WIP](https://github.com/dermatologist/cql-express-r4)
+* [See also, cql-exec-vsac with external FHIR server support!](https://github.com/dermatologist/cql-exec-vsac)
 
 # Data Model and Terminology Service Implementations
 
